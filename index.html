@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meal Planner</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <h1>Meal Planner</h1>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="library">Recipe Library</button>
+    <button class="tab-btn" data-tab="planner">Weekly Planner</button>
+    <button class="tab-btn" data-tab="shopping">Shopping List</button>
+    <button class="tab-btn" data-tab="waste">Waste Tips</button>
+  </nav>
+  <span id="data-source-badge" class="badge"></span>
+</header>
+
+<main>
+  <!-- Recipe Library -->
+  <section id="tab-library" class="tab-panel active">
+    <div class="toolbar">
+      <input type="search" id="recipe-search" placeholder="Search recipes…" />
+      <select id="category-filter">
+        <option value="">All categories</option>
+      </select>
+      <label class="check-label"><input type="checkbox" id="filter-vegetarian" /> Vegetarian</label>
+      <label class="check-label"><input type="checkbox" id="filter-vegan" /> Vegan</label>
+    </div>
+    <div id="recipe-grid" class="recipe-grid"></div>
+  </section>
+
+  <!-- Weekly Planner -->
+  <section id="tab-planner" class="tab-panel">
+    <div id="targets-summary"></div>
+    <div class="planner-grid" id="planner-grid"></div>
+    <div class="daily-macros" id="daily-macros"></div>
+  </section>
+
+  <!-- Shopping List -->
+  <section id="tab-shopping" class="tab-panel">
+    <div class="shopping-header">
+      <h2>Ingredients for the week</h2>
+      <button id="clear-plan-btn" class="btn-secondary">Clear plan</button>
+    </div>
+    <div id="shopping-list"></div>
+  </section>
+
+  <!-- Waste Tips -->
+  <section id="tab-waste" class="tab-panel">
+    <div class="shopping-header">
+      <h2>Waste reduction for this week</h2>
+    </div>
+    <div id="waste-tips"></div>
+  </section>
+</main>
+
+<!-- Recipe detail / add-to-plan modal -->
+<div id="recipe-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="js/mock-data.js"></script>
+<script src="js/data-adapter.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
