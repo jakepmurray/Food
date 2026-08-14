@@ -32,10 +32,29 @@ const PlanSync = (() => {
     return typeof CONFIG.planSyncUrl === "string" && CONFIG.planSyncUrl.startsWith("https://");
   }
 
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Apps Script web apps can be slow (or occasionally flaky) on the first hit after
+  // sitting idle — a "cold start." Retry a couple of times with a short backoff before
+  // giving up, instead of letting one slow/dropped request take down sync for the whole
+  // page load.
+  async function fetchWithRetry(options, attempts = 3) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fetch(CONFIG.planSyncUrl, options);
+      } catch (e) {
+        lastErr = e;
+        if (i < attempts - 1) await sleep(700 * (i + 1));
+      }
+    }
+    throw lastErr;
+  }
+
   async function fetchPlan() {
     if (!isConfigured()) return null;
     try {
-      const res = await fetch(CONFIG.planSyncUrl, { cache: "no-store" });
+      const res = await fetchWithRetry({ cache: "no-store" });
       if (!res.ok) return null;
       const data = await res.json();
       return data && typeof data === "object" && !Array.isArray(data) ? data : null;
@@ -50,7 +69,7 @@ const PlanSync = (() => {
     try {
       // text/plain avoids a CORS preflight that Apps Script web apps don't handle well;
       // the server side still parses the body as JSON.
-      const res = await fetch(CONFIG.planSyncUrl, {
+      const res = await fetchWithRetry({
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(planObj),
