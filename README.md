@@ -1,6 +1,6 @@
 # Meal Planner
 
-A static (GitHub Pages-ready) shopping/recipe app: browse a recipe library, assign recipes to days of the week, adjust servings, see estimated daily macros against your personal targets, get an auto-generated shopping list, and get waste-reduction ideas for the week.
+A static (GitHub Pages-ready) shopping/recipe app: browse a recipe library (filterable by vegetarian/vegan, what's on today's plan, or what's on this week's plan), assign recipes to days of the week and drag to reorder, adjust servings, see estimated daily macros against your personal targets, get an auto-generated shopping list, and get waste-reduction ideas for the week. The weekly plan can optionally sync across devices — see "Cross-device sync" below.
 
 No build step — plain HTML/CSS/JS. **Now reading live data from your published Google Sheet** (see [js/data-adapter.js](js/data-adapter.js)) rather than the local placeholder file — edit a cell in Sheets and reload the app to see it. [js/mock-data.js](js/mock-data.js) is kept as an offline fallback/demo dataset; flip `CONFIG.source` back to `"mock"` any time you want to work offline or test without touching the real sheet.
 
@@ -24,7 +24,7 @@ js/app.js          → all UI logic, reads only from that resolved shape
 ```
 
 The app is currently pointed at the workbook published at:
-https://docs.google.com/spreadsheets/d/e/2PACX-1vRbXsz0b4TgegSBNAKcrRyD8ae-narOnshrI-jCFaqrINrG59NBh9xuMhmscY5jWg/pubhtml
+https://docs.google.com/spreadsheets/d/e/2PACX-1vSurFaIeECFQs0rus1xlvaTKNh5_5_ryoF3-58xaBIli2hwA70VR9rQM-IwmgEq_QuV9mpwUpkuz3ag/pubhtml
 
 That's a **"Publish to web"** link (File → Share → Publish to web), not a regular share link — it issues its own `2PACX-...` id and works without anyone needing to be signed in. [js/data-adapter.js](js/data-adapter.js) fetches each tab as CSV via:
 ```
@@ -34,6 +34,27 @@ https://docs.google.com/spreadsheets/d/e/<PUBLISHED_ID>/pub?gid=<TAB_GID>&single
 **Editing data:** just edit the sheet directly — no republish needed, Google serves the published CSV live off the current cell values. The app re-fetches on every page load (no caching), so a browser refresh is all it takes to see a change.
 
 **If you ever republish under a new link** (e.g. a fresh copy of the workbook), or add a brand-new tab: open the new pubhtml link, and either watch the Network tab for the CSV request `.../pub?gid=...` from the sheet's own tab switcher, or click through each tab and read the `gid` off the iframe it loads — then update `CONFIG.publishedId` and `CONFIG.gids` in [js/data-adapter.js](js/data-adapter.js) to match. Existing gids stay stable as long as you don't delete and recreate a tab.
+
+## Cross-device sync
+
+By default the weekly plan (which recipes are on which day, servings, the order you've arranged them in) lives in **that browser's local storage only** — it survives reloads on that device, but a different browser or device starts with an empty plan.
+
+To make the same plan follow you across devices, the app can optionally push/pull the plan to a tiny **Google Apps Script "Web App"** bound to your spreadsheet — no new accounts or services, since it lives inside the Google account you're already using for the sheet.
+
+**What this gets you:** open the app on your phone, add a recipe, and it shows up on your laptop the next time you load the app there (or tap the "↻ Sync now" button in the header — no reload needed). It is *not* realtime collaboration: two devices open at once don't see each other's edits live, and if both save within the same moment, the last one wins.
+
+**One-time setup:**
+1. Open your spreadsheet → **Extensions → Apps Script**.
+2. Delete any starter code in `Code.gs`, and paste in the contents of [apps-script/PlanSync.gs](apps-script/PlanSync.gs) instead.
+3. **Deploy → New deployment** → gear icon → type **"Web app"**.
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+4. Click **Deploy**, then **Authorize access** and approve the prompts (it's your own script acting on your own spreadsheet, so this is safe — just Google's standard "this script wants to..." confirmation).
+5. Copy the Web App URL it gives you (ends in `/exec`) and paste it into `CONFIG.planSyncUrl` in [js/data-adapter.js](js/data-adapter.js).
+
+That's it — a `PlanSync` tab is created automatically in your spreadsheet the first time it runs (don't edit that tab by hand; it just stores the plan as JSON). Until `CONFIG.planSyncUrl` is filled in, sync is a complete no-op and the app behaves exactly as before — local storage only, no sync UI shown.
+
+If you ever redeploy the script (e.g. after editing `PlanSync.gs`), Apps Script gives the same `/exec` URL back as long as you choose **"Manage deployments" → edit the existing deployment → New version**, rather than creating a brand-new deployment — so you shouldn't need to update `CONFIG.planSyncUrl` again after the first setup.
 
 ## Where the data came from
 

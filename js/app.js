@@ -21,6 +21,61 @@ function loadPlan() {
 
 function savePlan() {
   localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(plan));
+  schedulePlanPush();
+}
+
+// ---------- cross-device sync ----------
+// Debounced so a burst of edits (e.g. a drag reorder followed by a servings tweak)
+// sends one push instead of one per keystroke/click.
+let pushTimer = null;
+function schedulePlanPush() {
+  if (!PlanSync.isConfigured()) return;
+  clearTimeout(pushTimer);
+  setSyncBadge("saving");
+  pushTimer = setTimeout(async () => {
+    const ok = await PlanSync.pushPlan(plan);
+    setSyncBadge(ok ? "synced" : "error");
+  }, 800);
+}
+
+function setSyncBadge(state) {
+  const badge = document.getElementById("plan-sync-badge");
+  const syncBtn = document.getElementById("sync-now-btn");
+  if (!PlanSync.isConfigured()) {
+    badge.classList.add("hidden");
+    syncBtn.classList.add("hidden");
+    return;
+  }
+  badge.classList.remove("hidden");
+  syncBtn.classList.remove("hidden");
+  badge.classList.toggle("badge-error", state === "error");
+  const labels = {
+    loading: "Loading plan…",
+    saving: "Saving…",
+    synced: "Plan synced",
+    error: "Sync failed — saved locally",
+  };
+  badge.textContent = labels[state] || "";
+}
+
+// Pulls the latest plan from the shared sheet and re-renders everything that
+// depends on it. Used both at startup and from the manual "Sync now" button.
+async function pullPlan() {
+  setSyncBadge("loading");
+  const remote = await PlanSync.fetchPlan();
+  if (!remote) {
+    setSyncBadge(PlanSync.isConfigured() ? "error" : "");
+    return false;
+  }
+  DAYS.forEach((d) => { if (!Array.isArray(remote[d])) remote[d] = []; });
+  plan = remote;
+  localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(plan));
+  setSyncBadge("synced");
+  renderPlanner();
+  renderShoppingList();
+  renderWasteTips();
+  renderRecipeGrid();
+  return true;
 }
 
 // ---------- helpers ----------
@@ -73,6 +128,11 @@ function numericTarget(metric) {
   return !isNaN(n) && n > 0 ? n : null;
 }
 
+// Maps JS's Sunday-first getDay() (0-6) onto our Monday-first DAYS array.
+function todayDayName() {
+  return DAYS[(new Date().getDay() + 6) % 7];
+}
+
 // ---------- tabs ----------
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -80,6 +140,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+    // Re-render on every visit, not just once at load — the library's Today/This week
+    // filters and the shopping list/waste tips all depend on plan state that can have
+    // changed on another tab (or, once synced, on another device) since last shown.
+    if (btn.dataset.tab === "library") renderRecipeGrid();
     if (btn.dataset.tab === "planner") renderPlanner();
     if (btn.dataset.tab === "shopping") renderShoppingList();
     if (btn.dataset.tab === "waste") renderWasteTips();
@@ -104,13 +168,22 @@ function renderRecipeGrid() {
   const cat = document.getElementById("category-filter").value;
   const vegetarianOnly = document.getElementById("filter-vegetarian").checked;
   const veganOnly = document.getElementById("filter-vegan").checked;
+  const todayOnly = document.getElementById("filter-today").checked;
+  const thisWeekOnly = document.getElementById("filter-thisweek").checked;
+
+  const today = todayDayName();
+  document.getElementById("today-label").textContent = today;
+  const todayIds = new Set((plan[today] || []).map((item) => String(item.recipe_id)));
+  const weekIds = new Set(DAYS.flatMap((d) => (plan[d] || []).map((item) => String(item.recipe_id))));
 
   const filtered = DATA.recipes.filter((r) => {
     const matchesSearch = !search || r.name.toLowerCase().includes(search) || String(r.tags).toLowerCase().includes(search);
     const matchesCat = !cat || r.category === cat;
     const matchesVegetarian = !vegetarianOnly || isTrue(r.is_vegetarian);
     const matchesVegan = !veganOnly || isTrue(r.is_vegan);
-    return matchesSearch && matchesCat && matchesVegetarian && matchesVegan;
+    const matchesToday = !todayOnly || todayIds.has(String(r.recipe_id));
+    const matchesWeek = !thisWeekOnly || weekIds.has(String(r.recipe_id));
+    return matchesSearch && matchesCat && matchesVegetarian && matchesVegan && matchesToday && matchesWeek;
   });
 
   grid.innerHTML = "";
@@ -147,6 +220,8 @@ document.getElementById("recipe-search").addEventListener("input", renderRecipeG
 document.getElementById("category-filter").addEventListener("change", renderRecipeGrid);
 document.getElementById("filter-vegetarian").addEventListener("change", renderRecipeGrid);
 document.getElementById("filter-vegan").addEventListener("change", renderRecipeGrid);
+document.getElementById("filter-today").addEventListener("change", renderRecipeGrid);
+document.getElementById("filter-thisweek").addEventListener("change", renderRecipeGrid);
 
 // ---------- Recipe modal (detail + add-to-plan) ----------
 const modalOverlay = document.getElementById("recipe-modal");
@@ -522,13 +597,17 @@ function renderShoppingList() {
   `).join("");
 }
 
-document.getElementById("clear-plan-btn").addEventListener("click", () => {
-  if (!confirm("Clear the entire weekly plan?")) return;
+function clearPlan() {
+  if (!confirm("Clear the entire weekly plan? This can't be undone.")) return;
   DAYS.forEach((d) => (plan[d] = []));
   savePlan();
   renderPlanner();
   renderShoppingList();
-});
+  renderWasteTips();
+}
+
+document.getElementById("clear-plan-btn").addEventListener("click", clearPlan);
+document.getElementById("clear-plan-btn-planner").addEventListener("click", clearPlan);
 
 // ---------- Waste Tips ----------
 // Reuse ideas fall into two buckets the user cares about: turning scraps into
@@ -590,6 +669,8 @@ function renderWasteTips() {
 }
 
 // ---------- Init ----------
+document.getElementById("sync-now-btn").addEventListener("click", pullPlan);
+
 async function init() {
   const badge = document.getElementById("data-source-badge");
   badge.textContent = CONFIG.source === "mock" ? "Placeholder data" : "Live Google Sheet";
@@ -601,8 +682,12 @@ async function init() {
     return;
   }
   renderCategoryFilter();
-  renderRecipeGrid();
-  renderPlanner();
+  if (PlanSync.isConfigured()) {
+    await pullPlan(); // renders the recipe grid, planner, shopping list, and waste tips itself
+  } else {
+    renderRecipeGrid();
+    renderPlanner();
+  }
 }
 
 init();

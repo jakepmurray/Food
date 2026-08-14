@@ -4,7 +4,7 @@
  *
  * ── How this is wired up ──────────────────────────────────────────
  * CONFIG.source = "sheet" reads from the workbook published at:
- *   https://docs.google.com/spreadsheets/d/e/2PACX-1vRbXsz0b4TgegSBNAKcrRyD8ae-narOnshrI-jCFaqrINrG59NBh9xuMhmscY5jWg/pubhtml
+ *   https://docs.google.com/spreadsheets/d/e/2PACX-1vSurFaIeECFQs0rus1xlvaTKNh5_5_ryoF3-58xaBIli2hwA70VR9rQM-IwmgEq_QuV9mpwUpkuz3ag/pubhtml
  * (File > Share > Publish to web). Each tab's numeric gid below was read
  * out of the published sheet's own tab switcher (open the pubhtml link
  * and inspect network requests, or check the iframe src when a tab is
@@ -24,7 +24,9 @@ const CONFIG = {
 
   // The "2PACX-..." id from the published pubhtml URL (not the regular
   // edit-link spreadsheet id — publishing to web issues its own id).
-  publishedId: "2PACX-1vRbXsz0b4TgegSBNAKcrRyD8ae-narOnshrI-jCFaqrINrG59NBh9xuMhmscY5jWg",
+  publishedId: "2PACX-1vSurFaIeECFQs0rus1xlvaTKNh5_5_ryoF3-58xaBIli2hwA70VR9rQM-IwmgEq_QuV9mpwUpkuz3ag",
+  // Same gids as the previous publish — a republish of the same file keeps each tab's
+  // gid stable, it only issues a new "2PACX-..." publication id above.
   gids: {
     recipes: "235011287",
     ingredients: "687348207",
@@ -32,6 +34,11 @@ const CONFIG = {
     wasteReduction: "959856370",
     nutritionTargets: "199518097",
   },
+
+  // Cross-device sync for the weekly plan (which recipes are on which day).
+  // Leave this as-is to keep the plan local-storage-only, single-device.
+  // See js/plan-sync.js for the one-time setup that gets you this URL.
+  planSyncUrl: "https://script.google.com/macros/s/AKfycbwNUhrycoFmZJlEpE4HG2Gs6rtGFXXtsICitZF3dHjisTnWdN9DUBk0gsb1jqwpPCs/exec",
 };
 
 const DataSource = (() => {
