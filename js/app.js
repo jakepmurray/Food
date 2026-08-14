@@ -133,6 +133,17 @@ function todayDayName() {
   return DAYS[(new Date().getDay() + 6) % 7];
 }
 
+// Meal-chronological grouping for the Recipe Library: any category not listed here
+// (typos, a new category added straight in the sheet, etc.) falls into "Other" rather
+// than being dropped.
+const CATEGORY_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack", "Side", "Other"];
+const CATEGORY_GROUP_LABEL = { Breakfast: "Breakfast", Lunch: "Lunch", Dinner: "Dinner", Snack: "Snacks", Side: "Sides", Other: "Other" };
+
+function categoryGroup(cat) {
+  const match = CATEGORY_ORDER.find((c) => c.toLowerCase() === String(cat || "").trim().toLowerCase());
+  return match || "Other";
+}
+
 // ---------- tabs ----------
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -153,7 +164,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 // ---------- Recipe Library ----------
 function renderCategoryFilter() {
   const sel = document.getElementById("category-filter");
-  const cats = [...new Set(DATA.recipes.map((r) => r.category))].sort();
+  const cats = [...new Set(DATA.recipes.map((r) => r.category))].sort((a, b) => {
+    const groupDiff = CATEGORY_ORDER.indexOf(categoryGroup(a)) - CATEGORY_ORDER.indexOf(categoryGroup(b));
+    return groupDiff !== 0 ? groupDiff : a.localeCompare(b);
+  });
   cats.forEach((c) => {
     const opt = document.createElement("option");
     opt.value = c;
@@ -186,8 +200,24 @@ function renderRecipeGrid() {
     return matchesSearch && matchesCat && matchesVegetarian && matchesVegan && matchesToday && matchesWeek;
   });
 
+  // Meal-chronological groups (Breakfast/Lunch/Dinner/Snacks/Sides/Other), alphabetical
+  // by name within each group.
+  filtered.sort((a, b) => {
+    const groupDiff = CATEGORY_ORDER.indexOf(categoryGroup(a.category)) - CATEGORY_ORDER.indexOf(categoryGroup(b.category));
+    return groupDiff !== 0 ? groupDiff : a.name.localeCompare(b.name);
+  });
+
   grid.innerHTML = "";
+  let currentGroup = null;
   filtered.forEach((r) => {
+    const group = categoryGroup(r.category);
+    if (group !== currentGroup) {
+      currentGroup = group;
+      const heading = document.createElement("div");
+      heading.className = "recipe-group-heading";
+      heading.textContent = CATEGORY_GROUP_LABEL[group];
+      grid.appendChild(heading);
+    }
     const card = document.createElement("div");
     card.className = "recipe-card";
     const tags = String(r.tags || "").split(",").filter(Boolean).map((t) => `<span class="tag">${t.trim()}</span>`).join("");

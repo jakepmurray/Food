@@ -128,6 +128,19 @@ input[type="search"] { flex: 1; min-width: 200px; }
   gap: 14px;
 }
 
+.recipe-group-heading {
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-top: 4px;
+}
+.recipe-group-heading:first-child { margin-top: 0; }
+
 .recipe-card {
   background: var(--surface);
   border: 1px solid var(--border);
