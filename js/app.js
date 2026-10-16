@@ -75,6 +75,7 @@ async function pullPlan() {
   renderShoppingList();
   renderWasteTips();
   renderRecipeGrid();
+  if (typeof TodayTasks !== "undefined") TodayTasks.render();
   return true;
 }
 
@@ -157,6 +158,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     if (btn.dataset.tab === "library") renderRecipeGrid();
     if (btn.dataset.tab === "planner") renderPlanner();
     if (btn.dataset.tab === "shopping") renderShoppingList();
+    if (btn.dataset.tab === "tasks") TodayTasks.render();
     if (btn.dataset.tab === "waste") renderWasteTips();
   });
 });
@@ -634,6 +636,7 @@ function clearPlan() {
   renderPlanner();
   renderShoppingList();
   renderWasteTips();
+  if (typeof TodayTasks !== "undefined") TodayTasks.render();
 }
 
 document.getElementById("clear-plan-btn").addEventListener("click", clearPlan);
@@ -713,10 +716,11 @@ async function init() {
   }
   renderCategoryFilter();
   if (PlanSync.isConfigured()) {
-    await pullPlan(); // renders the recipe grid, planner, shopping list, and waste tips itself
+    await pullPlan(); // renders the recipe grid, planner, shopping list, waste tips, and today's tasks itself
   } else {
     renderRecipeGrid();
     renderPlanner();
+    if (typeof TodayTasks !== "undefined") TodayTasks.render();
   }
 }
 

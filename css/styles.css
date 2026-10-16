@@ -362,3 +362,248 @@ input[type="search"] { flex: 1; min-width: 200px; }
 .day-picker button.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 16px 0 6px; }
+
+/* ---- Today's Tasks ---- */
+.tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.tasks-header h2 { margin: 0; font-size: 1.25rem; }
+.tasks-subheader {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 4px 0 0;
+}
+.tasks-day-toggle {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tasks-day-toggle .btn-secondary.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.tasks-day-toggle .btn-secondary.active:hover {
+  color: #fff;
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.tasks-progress {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tasks-progress-bar {
+  flex: 1;
+  min-width: 120px;
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tasks-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+.tasks-progress-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+
+.mealtimes-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.mealtimes-card h4 { margin: 0 0 10px; font-size: 0.9rem; }
+.mealtimes-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+.mealtime-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.mealtime-field label { color: var(--muted); min-width: 72px; }
+.mealtime-field input[type="time"] {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.advance-section { margin-bottom: 18px; }
+.advance-card {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+}
+.advance-card.night {
+  border-left-color: #8b6bb0;
+  background: color-mix(in srgb, #8b6bb0 12%, var(--surface));
+}
+.advance-card.morning {
+  border-left-color: #c4893a;
+  background: color-mix(in srgb, #c4893a 12%, var(--surface));
+}
+.advance-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--surface);
+  color: var(--accent);
+}
+.advance-card.night .advance-badge { color: #8b6bb0; }
+.advance-card.morning .advance-badge { color: #c4893a; }
+
+.meal-slot {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.meal-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
+}
+.meal-slot-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meal-slot-time {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.meal-slot-start {
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+.slot-icon { font-size: 1.05rem; }
+
+.task-recipe {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.task-recipe:last-child { border-bottom: none; }
+.task-recipe-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.task-check {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.task-recipe-body { flex: 1; min-width: 0; }
+.task-recipe-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0 0 2px;
+}
+.task-recipe.done .task-recipe-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.task-recipe-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.task-ingredients {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.task-ingredients strong { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+.task-expand-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+  font-weight: 600;
+}
+.task-expand-btn:hover { color: var(--accent-hover); text-decoration: underline; }
+
+.task-instructions {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.task-instructions ol {
+  margin: 0;
+  padding-left: 18px;
+}
+.task-instructions li {
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+
+.tasks-empty {
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.tasks-empty a, .tasks-empty .linkish {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .mealtime-field { width: 100%; justify-content: space-between; }
+  .mealtime-field label { min-width: auto; }
+  .tasks-header h2 { font-size: 1.1rem; }
+}
