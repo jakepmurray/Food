@@ -682,3 +682,7 @@ input[type="search"] { flex: 1; min-width: 200px; }
   border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; cursor: pointer; min-width: 48px;
 }
 .shop-day-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.shop-sync-note { font-size: 0.78rem; margin: 0 0 0.6rem; color: var(--muted, #7a7a7a); }
+.shop-sync-note.on { color: #2e7d32; }
+.shop-sync-note.error { color: #b45309; }
