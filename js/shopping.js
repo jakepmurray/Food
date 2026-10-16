@@ -19,10 +19,48 @@ const SHOP_CATEGORY_ORDER = ["Produce", "Meat", "Dairy", "Bakery", "Pantry", "Fr
 function shopLoad() {
   try {
     const s = JSON.parse(localStorage.getItem(SHOP_KEY) || "{}");
-    return { manual: s.manual || { meals: [], viv: [], other: [] }, checked: s.checked || {}, hidden: s.hidden || {}, planSig: s.planSig || "" };
+    return shopSeed({ manual: s.manual || { meals: [], viv: [], other: [] }, checked: s.checked || {}, hidden: s.hidden || {}, planSig: s.planSig || "", range: s.range || null, seedVersion: s.seedVersion || 0 });
   } catch (e) {
-    return { manual: { meals: [], viv: [], other: [] }, checked: {}, hidden: {}, planSig: "" };
+    return shopSeed({ manual: { meals: [], viv: [], other: [] }, checked: {}, hidden: {}, planSig: "", range: null, seedVersion: 0 });
   }
+}
+
+// Default items seeded once per SHOP_SEED_VERSION (so they appear on every device,
+// even with existing storage, but never duplicate and stay removable).
+const SHOP_SEED_VERSION = 1;
+const LATTE_SEED = [
+  ["Pumpkin spice latte", ["2 shots espresso (2 oz)", "3/4 cup milk", "2 tbsp pumpkin puree", "1/2 tsp pumpkin pie spice", "1 tbsp maple syrup or brown sugar", "1/4 tsp vanilla extract"]],
+  ["Maple cinnamon latte", ["2 shots espresso (2 oz)", "3/4 cup milk", "1 tbsp maple syrup", "1/4 tsp ground cinnamon (+ pinch to top)"]],
+  ["Ube latte", ["2 shots espresso (2 oz)", "3/4 cup milk", "1 tbsp ube halaya (or 1/4 tsp ube extract)", "1-2 tsp sweetened condensed milk or sugar"]],
+];
+function shopSeed(st) {
+  if (st.seedVersion >= SHOP_SEED_VERSION) return st;
+  st.manual.other = st.manual.other || [];
+  LATTE_SEED.forEach(([group, items]) => items.forEach((text, i) => {
+    const id = `seed1:${group}:${i}`;
+    if (!st.manual.other.some((m) => m.id === id)) st.manual.other.push({ id, text, group });
+  }));
+  st.seedVersion = SHOP_SEED_VERSION;
+  localStorage.setItem(SHOP_KEY, JSON.stringify(st));
+  return st;
+}
+
+// ---- day range ----
+function shopDefaultRange() { return { mode: "through", end: "Tue" }; }
+function shopSelectedDays(st) {
+  const r = st.range || shopDefaultRange();
+  if (r.mode === "custom") return DAYS.filter((d) => (r.days || []).includes(d));
+  const order = shopDayOrderFromToday();
+  const endIdx = order.indexOf(r.end);
+  return endIdx < 0 ? order : order.slice(0, endIdx + 1);
+}
+function shopDayOrderFromToday() {
+  const t = todayDayName();
+  const i = DAYS.indexOf(t);
+  return [...DAYS.slice(i), ...DAYS.slice(0, i)];
+}
+function shopLoadRaw() {
+  try { return JSON.parse(localStorage.getItem(SHOP_KEY) || "{}"); } catch (e) { return {}; }
 }
 function shopSave(st) { localStorage.setItem(SHOP_KEY, JSON.stringify(st)); }
 
@@ -31,12 +69,12 @@ function isPreparedMeal(r) {
 }
 
 function planSignature() {
-  return JSON.stringify(DAYS.map((d) => (plan[d] || []).map((i) => `${i.recipe_id}x${i.servings}`)));
+  return JSON.stringify(shopSelectedDays(shopLoadRaw()).map((d) => [d, (plan[d] || []).map((i) => `${i.recipe_id}x${i.servings}`)]));
 }
 
 function autoMealItems() {
   const totals = {};
-  DAYS.forEach((day) => (plan[day] || []).forEach((item) => {
+  shopSelectedDays(shopLoadRaw()).forEach((day) => (plan[day] || []).forEach((item) => {
     const r = recipeById(item.recipe_id);
     if (!r || isPreparedMeal(r)) return;
     ingredientsFor(item.recipe_id).forEach((ing) => {
@@ -84,7 +122,7 @@ function renderShoppingList() {
 
   const auto = autoMealItems().filter((t) => !st.hidden[t.key]);
   const skipped = new Set();
-  DAYS.forEach((d) => (plan[d] || []).forEach((i) => { const r = recipeById(i.recipe_id); if (r && isPreparedMeal(r)) skipped.add(r.name); }));
+  shopSelectedDays(st).forEach((d) => (plan[d] || []).forEach((i) => { const r = recipeById(i.recipe_id); if (r && isPreparedMeal(r)) skipped.add(r.name); }));
 
   const byCat = {};
   auto.forEach((t) => (byCat[t.category] = byCat[t.category] || []).push(t));
@@ -100,6 +138,7 @@ function renderShoppingList() {
   const sectionsHtml = SHOP_SECTIONS.map((sec) => {
     let body = "";
     if (sec.id === "meals") {
+      body += shopRangeHtml(st);
       if (!auto.length) body += `<p class="muted-note shop-empty">No plan ingredients yet — add recipes in the Weekly Planner.</p>`;
       cats.forEach((cat) => {
         const items = byCat[cat].sort((a, b) => a.name.localeCompare(b.name));
@@ -113,7 +152,10 @@ function renderShoppingList() {
     const manual = st.manual[sec.id] || [];
     if (manual.length) {
       if (sec.id === "meals") body += `<div class="shop-subcat">Extras</div>`;
-      body += `<ul class="shop-items">${manual.map((m) => { count(m.id); return shopItemRow(m.id, m.text, "", "", !!st.checked[m.id]); }).join("")}</ul>`;
+      const groups = [];
+      manual.forEach((m) => { const g = m.group || ""; let e = groups.find((x) => x.g === g); if (!e) groups.push((e = { g, items: [] })); e.items.push(m); });
+      groups.sort((a, b) => (a.g === "" ? 1 : 0) - (b.g === "" ? 1 : 0));
+      body += groups.map((grp) => `${grp.g ? `<div class="shop-subcat">☕ ${escHtml(grp.g)}</div>` : (groups.length > 1 ? `<div class="shop-subcat">Added</div>` : "")}<ul class="shop-items">${grp.items.map((m) => { count(m.id); return shopItemRow(m.id, m.text, "", "", !!st.checked[m.id]); }).join("")}</ul>`).join("");
     } else if (sec.id !== "meals") {
       body += `<p class="muted-note shop-empty">Nothing here yet.</p>`;
     }
@@ -131,6 +173,22 @@ function renderShoppingList() {
   container.innerHTML = `
     ${total ? `<div class="tasks-progress"><div class="tasks-progress-bar"><div class="tasks-progress-fill" style="width:${Math.round((done / total) * 100)}%"></div></div><span class="tasks-progress-label">${done} of ${total} in the cart</span></div>` : ""}
     ${sectionsHtml}`;
+
+  container.querySelectorAll(".shop-day-chip").forEach((chip) => chip.addEventListener("click", () => {
+    const s = shopLoad();
+    const cur = new Set(shopSelectedDays(s));
+    cur.has(chip.dataset.day) ? cur.delete(chip.dataset.day) : cur.add(chip.dataset.day);
+    s.range = { mode: "custom", days: DAYS.filter((d) => cur.has(d)) };
+    shopSave(s);
+    renderShoppingList();
+  }));
+  const thru = container.querySelector("#shop-through");
+  if (thru) thru.addEventListener("change", () => {
+    const s = shopLoad();
+    s.range = thru.value ? { mode: "through", end: thru.value } : (s.range && s.range.mode === "custom" ? s.range : { mode: "custom", days: shopSelectedDays(s) });
+    shopSave(s);
+    renderShoppingList();
+  });
 
   container.querySelectorAll(".shop-add").forEach((form) => form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -172,7 +230,7 @@ function shoppingListAsText() {
     const rows = [];
     if (sec.id === "meals") auto.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
       .forEach((t) => rows.push(`- ${t.name}${autoQtyText(t) ? ` (${autoQtyText(t)})` : ""}`));
-    (st.manual[sec.id] || []).filter((m) => !st.checked[m.id]).forEach((m) => rows.push(`- ${m.text}`));
+    (st.manual[sec.id] || []).filter((m) => !st.checked[m.id]).forEach((m) => rows.push(`- ${m.text}${m.group ? ` (${m.group})` : ""}`));
     if (rows.length) lines.push("", `${sec.title}:`, ...rows);
   });
   return lines.join("\n");
@@ -213,3 +271,23 @@ document.getElementById("shop-share")?.addEventListener("click", async () => {
     window.prompt("Copy your list:", text);
   }
 });
+
+function shopRangeHtml(st) {
+  const sel = new Set(shopSelectedDays(st));
+  const r = st.range || shopDefaultRange();
+  const order = shopDayOrderFromToday();
+  const today = todayDayName();
+  return `
+    <div class="shop-range">
+      <div class="shop-range-row">
+        <label for="shop-through">From today (${today}) through</label>
+        <select id="shop-through">
+          <option value=""${r.mode === "custom" ? " selected" : ""}>Custom days…</option>
+          ${order.map((d) => `<option value="${d}"${r.mode === "through" && r.end === d ? " selected" : ""}>${d === today ? `${d} (today only)` : d}</option>`).join("")}
+        </select>
+      </div>
+      <div class="shop-days">
+        ${order.map((d) => `<button type="button" class="shop-day-chip${sel.has(d) ? " on" : ""}" data-day="${d}" aria-pressed="${sel.has(d)}">${d}</button>`).join("")}
+      </div>
+    </div>`;
+}
