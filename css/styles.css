@@ -686,3 +686,6 @@ input[type="search"] { flex: 1; min-width: 200px; }
 .shop-sync-note { font-size: 0.78rem; margin: 0 0 0.6rem; color: var(--muted, #7a7a7a); }
 .shop-sync-note.on { color: #2e7d32; }
 .shop-sync-note.error { color: #b45309; }
+.shop-mode { gap: 0.4rem; align-items: center; flex-wrap: wrap; margin: 0.4rem 0; font-size: 0.85rem; }
+.shop-mode-btn { border: 1px solid #ccc; background: #fff; border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.8rem; cursor: pointer; }
+.shop-mode-btn.on { background: var(--accent, #2e7d32); color: #fff; border-color: transparent; }

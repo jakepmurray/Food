@@ -218,21 +218,55 @@ function planSignature() {
   return JSON.stringify(shopSelectedDays().map((d) => [d, (plan[d] || []).map((i) => `${i.recipe_id}x${i.servings}`)]));
 }
 
+function shopMode() { return shopPrefs().mode === "exact" ? "exact" : "batch"; }
+function shopSetMode(m) { const p = shopPrefs(); p.mode = m; shopSavePrefs(p); }
+function shopNum(v) { const n = Number(v); return v !== "" && v !== null && v !== undefined && !isNaN(n) && n > 0 ? n : 0; }
+
+// Totals planned servings per recipe across the selected days, then (in batch
+// mode) rounds up to whole batches of default_servings. Recipes with a blank or
+// 1 default_servings stay per serving.
 function autoMealItems() {
-  const totals = {};
+  const perRecipe = {};
   shopSelectedDays().forEach((day) => (plan[day] || []).forEach((item) => {
     const r = recipeById(item.recipe_id);
     if (!r || isPreparedMeal(r)) return;
-    ingredientsFor(item.recipe_id).forEach((ing) => {
-      const key = `auto:${String(ing.ingredient_name).toLowerCase()}|${ing.unit || ""}`;
-      if (!totals[key]) totals[key] = { key, name: ing.ingredient_name, unit: ing.unit || "", qty: 0, needsQty: false, category: String(ing.shopping_category || "").trim() || "Other groceries", recipes: new Set() };
-      const t = totals[key];
-      if (hasQty(ing)) t.qty += Number(ing.quantity_per_serving) * Number(item.servings || 1);
-      else t.needsQty = true;
-      t.recipes.add(r.name);
-    });
+    const e = (perRecipe[r.recipe_id] = perRecipe[r.recipe_id] || { r, servings: 0 });
+    e.servings += Number(item.servings || 1);
   }));
+  const batchMode = shopMode() === "batch";
+  const totals = {};
+  Object.values(perRecipe).forEach(({ r, servings }) => {
+    const ds = shopNum(r.default_servings);
+    const byBatch = batchMode && ds > 1;
+    const batches = byBatch ? Math.ceil(servings / ds) : 0;
+    const label = byBatch ? `${r.name} ×${batches} batch${batches === 1 ? "" : "es"}` : `${r.name} (${fmtQty(servings)} serving${servings === 1 ? "" : "s"})`;
+    ingredientsFor(r.recipe_id).forEach((ing) => {
+      let qty = 0, unit = ing.unit || "";
+      if (byBatch && shopNum(ing.quantity_per_batch)) { qty = shopNum(ing.quantity_per_batch) * batches; unit = ing.unit_per_batch || unit; }
+      else if (hasQty(ing)) qty = Number(ing.quantity_per_serving) * (byBatch ? ds * batches : servings);
+      const key = `auto:${String(ing.ingredient_name).toLowerCase()}|${unit}`;
+      if (!totals[key]) totals[key] = { key, name: ing.ingredient_name, unit, qty: 0, needsQty: false, category: String(ing.shopping_category || "").trim() || "Other groceries", recipes: new Set() };
+      const t = totals[key];
+      if (qty > 0) t.qty += qty; else t.needsQty = true;
+      t.recipes.add(label);
+    });
+  });
   return Object.values(totals);
+}
+
+const SHOP_FRACTION_UNITS = /^(cups?|c|tbsp|tablespoons?|tsp|teaspoons?)$/i;
+const SHOP_COUNT_UNITS = /^(|each|ea|whole|pieces?|pcs?|cloves?|cans?|eggs?|large|medium|small|slices?|stalks?|heads?|bunch(es)?|sprigs?|fillets?|breasts?|thighs?|bags?|packages?|pkg|jars?|bottles?|loaf|loaves|links?)$/i;
+function shopFmtAmount(q, unit) {
+  const u = String(unit || "").trim();
+  if (SHOP_COUNT_UNITS.test(u)) return String(Math.ceil(q - 1e-9));
+  if (SHOP_FRACTION_UNITS.test(u)) {
+    const step = /tsp|teaspoon|tbsp|tablespoon/i.test(u) ? 8 : 4;
+    const n = Math.max(1, Math.round(q * step)); const w = Math.floor(n / step), f = n % step;
+    const g = (x, y) => (y ? g(y, x % y) : x); const d = g(f, step);
+    const frac = f ? `${f / d}/${step / d}` : "";
+    return [w || "", frac].filter(Boolean).join(" ") || "0";
+  }
+  return fmtQty(q);
 }
 
 function escHtml(s) {
@@ -240,7 +274,7 @@ function escHtml(s) {
 }
 
 function autoQtyText(t) {
-  if (t.qty > 0) return `${fmtQty(t.qty)} ${t.unit}${t.needsQty ? " +" : ""}`.trim();
+  if (t.qty > 0) return `${shopFmtAmount(t.qty, t.unit)} ${t.unit}${t.needsQty ? " +" : ""}`.trim();
   return "";
 }
 
@@ -321,6 +355,7 @@ function renderShoppingList() {
     ${sectionsHtml}`;
 
   ShopSync.renderNote();
+  container.querySelectorAll(".shop-mode-btn").forEach((b) => b.addEventListener("click", () => { shopSetMode(b.dataset.mode); renderShoppingList(); }));
   container.querySelectorAll(".shop-day-chip").forEach((chip) => chip.addEventListener("click", () => {
     const cur = new Set(shopSelectedDays());
     cur.has(chip.dataset.day) ? cur.delete(chip.dataset.day) : cur.add(chip.dataset.day);
@@ -430,6 +465,11 @@ function shopRangeHtml(st) {
           <option value=""${r.mode === "custom" ? " selected" : ""}>Custom days…</option>
           ${order.map((d) => `<option value="${d}"${r.mode === "through" && r.end === d ? " selected" : ""}>${d === today ? `${d} (today only)` : d}</option>`).join("")}
         </select>
+      </div>
+      <div class="shop-range-row shop-mode">
+        <span>Shop by:</span>
+        <button type="button" class="shop-mode-btn${shopMode() === "batch" ? " on" : ""}" data-mode="batch">full batches</button>
+        <button type="button" class="shop-mode-btn${shopMode() === "exact" ? " on" : ""}" data-mode="exact">exact servings</button>
       </div>
       <div class="shop-days">
         ${order.map((d) => `<button type="button" class="shop-day-chip${sel.has(d) ? " on" : ""}" data-day="${d}" aria-pressed="${sel.has(d)}">${d}</button>`).join("")}
