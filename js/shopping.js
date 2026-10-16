@@ -1,7 +1,7 @@
 /*
  * Shopping List: three sections.
  *  1. "Ingredients for meals" — auto-generated from the weekly plan (skips
- *     cookunity prepared meals), plus manual extras.
+ *     cookunity prepared meals and "leftovers"-tagged recipes), plus manual extras.
  *  2. "Ingredients for Viv" — manual.
  *  3. "Other" — manual.
  * Manual items, check state, and hidden auto items live in localStorage
@@ -210,8 +210,11 @@ function shopDayOrderFromToday() {
   return [...DAYS.slice(i), ...DAYS.slice(0, i)];
 }
 
+// Recipes we never shop for: CookUnity prepared meals and meals made from
+// leftovers (tag "leftovers"). All their ingredients are skipped.
+const SHOP_SKIP_TAGS = ["cookunity", "leftovers", "leftover"];
 function isPreparedMeal(r) {
-  return String(r.tags || "").toLowerCase().split(",").map((t) => t.trim()).includes("cookunity");
+  return String(r.tags || "").toLowerCase().split(",").map((t) => t.trim()).some((t) => SHOP_SKIP_TAGS.includes(t));
 }
 
 function planSignature() {
@@ -326,7 +329,7 @@ function renderShoppingList() {
           return shopItemRow(t.key, t.name, [...t.recipes].join(", "), autoQtyText(t), shopIsChecked(st, t.key));
         }).join("")}</ul>`;
       });
-      if (skipped.size) body += `<p class="muted-note">Skipped prepared meals: ${escHtml([...skipped].join(", "))}</p>`;
+      if (skipped.size) body += `<p class="muted-note">Skipped (prepared/leftover meals): ${escHtml([...skipped].join(", "))}</p>`;
     }
     const manual = shopManual(st, sec.id);
     if (manual.length) {
