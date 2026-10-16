@@ -51,9 +51,14 @@
   <!-- Shopping List -->
   <section id="tab-shopping" class="tab-panel">
     <div class="shopping-header">
-      <h2>Ingredients for the week</h2>
-      <button id="clear-plan-btn" class="btn-secondary">Clear plan</button>
+      <h2>Shopping List</h2>
+      <div class="shop-actions">
+        <button id="shop-clear-checked" class="btn-secondary" type="button">Clear checked</button>
+        <button id="shop-share" class="btn-secondary shop-primary" type="button">Copy / share</button>
+        <button id="clear-plan-btn" class="btn-secondary hidden" type="button">Clear plan</button>
+      </div>
     </div>
+    <div id="shop-toast" class="shop-toast hidden"></div>
     <div id="shopping-list"></div>
   </section>
 
@@ -83,6 +88,7 @@
 <script src="js/data-adapter.js"></script>
 <script src="js/plan-sync.js"></script>
 <script src="js/today-tasks.js"></script>
+<script src="js/shopping.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

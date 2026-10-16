@@ -582,52 +582,7 @@ function renderDailyMacros() {
 }
 
 // ---------- Shopping List ----------
-function renderShoppingList() {
-  const container = document.getElementById("shopping-list");
-  const totals = {}; // key: "name|unit" -> { name, unit, qty, category }
-
-  DAYS.forEach((day) => {
-    (plan[day] || []).forEach((item) => {
-      ingredientsFor(item.recipe_id).forEach((ing) => {
-        const key = `${ing.ingredient_name}|${ing.unit}`;
-        if (!totals[key]) {
-          totals[key] = { name: ing.ingredient_name, unit: ing.unit, qty: 0, needsQty: false, category: ing.shopping_category };
-        }
-        if (hasQty(ing)) totals[key].qty += ing.quantity_per_serving * item.servings;
-        else totals[key].needsQty = true;
-      });
-    });
-  });
-
-  const byCategory = {};
-  Object.values(totals).forEach((t) => {
-    byCategory[t.category] = byCategory[t.category] || [];
-    byCategory[t.category].push(t);
-  });
-
-  const categories = Object.keys(byCategory).sort();
-  if (!categories.length) {
-    container.innerHTML = `<p style="color:var(--muted)">Your plan is empty — add recipes in the Weekly Planner tab to generate a shopping list.</p>`;
-    return;
-  }
-
-  container.innerHTML = categories.map((cat) => `
-    <div class="shop-category">
-      <h3>${cat}</h3>
-      <ul>
-        ${byCategory[cat]
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((t) => {
-            const qtyText = t.qty > 0
-              ? `${fmtQty(t.qty)} ${t.unit}${t.needsQty ? " +" : ""}`
-              : "qty needed";
-            return `<li><span>${t.name}</span><span class="qty">${qtyText}</span></li>`;
-          })
-          .join("")}
-      </ul>
-    </div>
-  `).join("");
-}
+// See js/shopping.js (renderShoppingList).
 
 function clearPlan() {
   if (!confirm("Clear the entire weekly plan? This can't be undone.")) return;
